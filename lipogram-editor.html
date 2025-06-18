@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Lipogram Text Editor</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        .container {
+            display: flex;
+            width: 90%;
+            max-width: 1000px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .editor-container {
+            flex: 2;
+            padding: 20px;
+        }
+        .saved-lipograms {
+            flex: 1;
+            padding: 20px;
+            border-left: 1px solid #ccc;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        h1, h2 {
+            color: #333;
+            text-align: center;
+        }
+        textarea, input[type="text"], select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ccc;
+            border-radius: 4px;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+        textarea {
+            height: 200px;
+            resize: vertical;
+        }
+        #word-count, #synonyms {
+            margin-top: 10px;
+            color: #666;
+        }
+        #synonyms {
+            min-height: 50px;
+        }
+        .thesaurus-container, .forbidden-letter-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .thesaurus-container input {
+            flex-grow: 1;
+        }
+        #forbidden-letter {
+            width: 100px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .synonym-with-forbidden {
+            color: red;
+        }
+        @keyframes flash-red {
+            0% { background-color: #ffcccc; }
+            100% { background-color: white; }
+        }
+        .flash-red {
+            animation: flash-red 0.3s ease;
+        }
+        .cors-reminder {
+            background-color: #ffffd0;
+            border: 1px solid #e6e600;
+            border-radius: 4px;
+            padding: 10px;
+            margin-bottom: 15px;
+            font-size: 14px;
+            text-align: center;
+        }
+        .cors-reminder a {
+            color: #0066cc;
+            text-decoration: none;
+        }
+        .cors-reminder a:hover {
+            text-decoration: underline;
+        }
+        .editor-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 10px;
+        }
+        .saved-lipogram-item {
+            cursor: pointer;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        .saved-lipogram-item:hover {
+            background-color: #f0f0f0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="editor-container">
+            <h1 id="editor-title">Lipogram Text Editor</h1>
+            <div class="forbidden-letter-container">
+                <label for="forbidden-letter">Forbidden letter:</label>
+                <select id="forbidden-letter">
+                    <option value="a">A</option>
+                    <option value="b">B</option>
+                    <option value="c">C</option>
+                    <option value="d">D</option>
+                    <option value="e">E</option>
+                    <option value="f">F</option>
+                    <option value="g">G</option>
+                    <option value="h">H</option>
+                    <option value="i" selected>I</option>
+                    <option value="j">J</option>
+                    <option value="k">K</option>
+                    <option value="l">L</option>
+                    <option value="m">M</option>
+                    <option value="n">N</option>
+                    <option value="o">O</option>
+                    <option value="p">P</option>
+                    <option value="q">Q</option>
+                    <option value="r">R</option>
+                    <option value="s">S</option>
+                    <option value="t">T</option>
+                    <option value="u">U</option>
+                    <option value="v">V</option>
+                    <option value="w">W</option>
+                    <option value="x">X</option>
+                    <option value="y">Y</option>
+                    <option value="z">Z</option>
+                </select>
+            </div>
+            <textarea id="lipogram-editor" placeholder="Start typing here..."></textarea>
+            <div class="editor-footer">
+                <div id="word-count">Words: 0</div>
+                <button id="save-lipogram">Save Lipogram</button>
+            </div>
+            
+            <h2>Thesaurus</h2>
+            <div class="cors-reminder">
+                Reminder: You need to activate the CORS proxy to use the thesaurus. 
+                <a href="https://cors-anywhere.herokuapp.com/corsdemo" target="_blank">Click here to activate</a>
+            </div>
+            <div class="thesaurus-container">
+                <input type="text" id="thesaurus-input" placeholder="Enter a word to find synonyms">
+                <button id="thesaurus-submit">Submit</button>
+            </div>
+            <div id="synonyms"></div>
+        </div>
+        <div class="saved-lipograms">
+            <h2>Saved Lipograms</h2>
+            <div id="saved-lipograms-list"></div>
+        </div>
+    </div>
+
+    <script>
+        const editor = document.getElementById('lipogram-editor');
+        const wordCount = document.getElementById('word-count');
+        const thesaurusInput = document.getElementById('thesaurus-input');
+        const thesaurusSubmit = document.getElementById('thesaurus-submit');
+        const synonymsDisplay = document.getElementById('synonyms');
+        const forbiddenLetterSelect = document.getElementById('forbidden-letter');
+        const editorTitle = document.getElementById('editor-title');
+        const saveLipogramButton = document.getElementById('save-lipogram');
+        const savedLipogramsList = document.getElementById('saved-lipograms-list');
+        const apiKey = 'onG4r9x3BqkmJQvH7lskSw==X4P3DmThZ0e7c2U7';
+        const corsProxy = 'https://cors-anywhere.herokuapp.com/';
+
+        let forbiddenLetter = 'i';
+
+        function updateForbiddenLetter(newLetter, bypassCheck = false) {
+            const newForbiddenLetter = newLetter || forbiddenLetterSelect.value;
+            if (!bypassCheck && editor.value.trim() !== '') {
+                if (confirm('Changing the forbidden letter will erase your current text. Do you want to proceed?')) {
+                    forbiddenLetter = newForbiddenLetter;
+                    editor.value = '';
+                    updateWordCount();
+                } else {
+                    forbiddenLetterSelect.value = forbiddenLetter;
+                    return;
+                }
+            } else {
+                forbiddenLetter = newForbiddenLetter;
+            }
+            forbiddenLetterSelect.value = forbiddenLetter;
+            editorTitle.textContent = `Lipogram Text Editor (No '${forbiddenLetter.toUpperCase()}')`;
+            editor.placeholder = `Start typing here... (The letter '${forbiddenLetter.toUpperCase()}' is not allowed)`;
+            saveState();
+        }
+
+        forbiddenLetterSelect.addEventListener('change', () => updateForbiddenLetter());
+
+        function loadSavedLipograms() {
+            const savedLipograms = JSON.parse(localStorage.getItem('savedLipograms')) || [];
+            savedLipogramsList.innerHTML = '';
+            savedLipograms.forEach((lipogram, index) => {
+                const lipogramElement = document.createElement('div');
+                lipogramElement.classList.add('saved-lipogram-item');
+                lipogramElement.textContent = `${lipogram.preview} (no ${lipogram.forbiddenLetter.toUpperCase()})`;
+                lipogramElement.addEventListener('click', () => loadLipogram(index));
+                savedLipogramsList.appendChild(lipogramElement);
+            });
+        }
+
+        function loadLipogram(index) {
+            const savedLipograms = JSON.parse(localStorage.getItem('savedLipograms')) || [];
+            const lipogram = savedLipograms[index];
+            editor.value = lipogram.content;
+            updateForbiddenLetter(lipogram.forbiddenLetter, true);
+            updateWordCount();
+        }
+
+        function saveLipogram() {
+            const content = editor.value.trim();
+            if (content) {
+                const preview = content.split(' ').slice(0, 5).join(' ') + '...';
+                const newLipogram = { content, forbiddenLetter, preview };
+                const savedLipograms = JSON.parse(localStorage.getItem('savedLipograms')) || [];
+                savedLipograms.push(newLipogram);
+                localStorage.setItem('savedLipograms', JSON.stringify(savedLipograms));
+                loadSavedLipograms();
+            }
+        }
+
+        saveLipogramButton.addEventListener('click', saveLipogram);
+
+        // Load saved content when the page loads
+        window.addEventListener('load', () => {
+            const savedState = JSON.parse(localStorage.getItem('lipogramState')) || {};
+            if (savedState.content) {
+                editor.value = savedState.content;
+            }
+            if (savedState.forbiddenLetter) {
+                forbiddenLetterSelect.value = savedState.forbiddenLetter;
+                forbiddenLetter = savedState.forbiddenLetter;
+            }
+            updateForbiddenLetter(forbiddenLetter, true);
+            updateWordCount();
+            loadSavedLipograms();
+        });
+
+        function countWords(text) {
+            return text.split(/\s+/).filter(word => word.length > 0).length;
+        }
+
+        function updateWordCount() {
+            const words = countWords(editor.value);
+            wordCount.textContent = `Words: ${words}`;
+        }
+
+        function saveState() {
+            const state = {
+                content: editor.value,
+                forbiddenLetter: forbiddenLetter
+            };
+            localStorage.setItem('lipogramState', JSON.stringify(state));
+        }
+
+        editor.addEventListener('input', function(e) {
+            const text = this.value;
+            const forbiddenRegex = new RegExp(forbiddenLetter, 'gi');
+            const cleanText = text.replace(forbiddenRegex, '');
+            
+            if (text !== cleanText) {
+                const start = this.selectionStart;
+                const end = this.selectionEnd;
+                this.value = cleanText;
+                this.setSelectionRange(start - 1, end - 1);
+                
+                // Flash the background red
+                this.classList.add('flash-red');
+                setTimeout(() => {
+                    this.classList.remove('flash-red');
+                }, 300);
+            }
+
+            updateWordCount();
+            saveState();
+        });
+
+        async function getThesaurus(word) {
+            try {
+                const response = await fetch(`${corsProxy}https://api.api-ninjas.com/v1/thesaurus?word=${word}`, {
+                    headers: { 'X-Api-Key': apiKey }
+                });
+                const data = await response.json();
+                return {
+                    synonyms: data.synonyms,
+                    status: response.status,
+                    ok: response.ok
+                };
+            } catch (error) {
+                console.error('Error:', error);
+                return {
+                    synonyms: [],
+                    status: 'Error',
+                    ok: false,
+                    error: error.message
+                };
+            }
+        }
+
+        function displaySynonyms(synonyms) {
+            const forbiddenRegex = new RegExp(forbiddenLetter, 'i');
+            const sortedSynonyms = synonyms.sort((a, b) => {
+                const aHasForbidden = forbiddenRegex.test(a);
+                const bHasForbidden = forbiddenRegex.test(b);
+                if (aHasForbidden && !bHasForbidden) return 1;
+                if (!aHasForbidden && bHasForbidden) return -1;
+                return a.localeCompare(b);
+            });
+
+            const synonymsHtml = sortedSynonyms.map(syn => 
+                forbiddenRegex.test(syn) ? `<span class="synonym-with-forbidden">${syn}</span>` : syn
+            ).join(', ');
+            synonymsDisplay.innerHTML = `Synonyms: ${synonymsHtml}`;
+        }
+
+        async function submitThesaurus() {
+            const word = thesaurusInput.value.trim();
+            if (word) {
+                synonymsDisplay.textContent = 'Loading...';
+                const result = await getThesaurus(word);
+                
+                if (result.ok) {
+                    if (result.synonyms.length > 0) {
+                        displaySynonyms(result.synonyms);
+                    } else {
+                        synonymsDisplay.textContent = 'No synonyms found.';
+                    }
+                } else {
+                    synonymsDisplay.textContent = 'Error fetching synonyms. Make sure you\'ve activated the CORS proxy.';
+                }
+            } else {
+                synonymsDisplay.textContent = '';
+            }
+        }
+
+        thesaurusSubmit.addEventListener('click', submitThesaurus);
+
+        thesaurusInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                submitThesaurus();
+            }
+        });
+
+        updateForbiddenLetter(forbiddenLetter, true);
+    </script>
+</body>
+</html>
